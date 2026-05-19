@@ -1,10 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+<ModulePrefs title="Resources" />
+<Content type="html"><![CDATA[
+
 <!DOCTYPE html>
 <html lang="en-us">
 <head>
 <meta charset="utf-8"/>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<link rel="stylesheet" href="./style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/school-management-google/casebat@main/style.css"/>
 <style>
   canvas:focus{outline:none;}
   html,body{padding:0;margin:0;overflow:hidden;overscroll-behavior:none;height:100%;
@@ -34,7 +39,7 @@
     <div id="unity-progress-bar-empty" style="display:block;">
       <div id="unity-progress-bar-full" style="width:0%;"></div>
     </div>
-    <div id="download-status">Hazırlanıyor...</div>
+    <div id="download-status">G+ * Wait...</div>
     <div class="spinner" style="display:none;"></div>
   </div>
 </div>
@@ -110,8 +115,8 @@ window.YaGames = { init: function() {
 </script>
 
 <script>
-var CDN        = "BURAYA_CDN/Build";   /* <-- degistir */
-var SA_CDN     = "BURAYA_CDN/StreamingAssets"; /* StreamingAssets CDN */
+var CDN        = "https://cdn.jsdelivr.net/gh/school-management-google/casebat@main/Build";   /* <-- degistir */
+var SA_CDN     = "https://cdn.jsdelivr.net/gh/school-management-google/casebat@main/StreamingAssets"; /* StreamingAssets CDN */
 var BUNDLE_FILE = "aa/WebGL/defaultlocalgroup_assets_all_0b833d6ad84dbe0a143b5eb207af07ba.bundle";
 var BUNDLE_PARTS = 5;   /* 34.8MB / 8MB = 5 part */
 var _bundleBlobUrl = null;
@@ -121,7 +126,7 @@ var WASM_PARTS = 6;   /* 45.3MB / 8MB = 6 part */
 var buildUrl = CDN;
 var config = {
   dataUrl:            buildUrl + "/build.data.br",
-  frameworkUrl:       buildUrl + "/build.framework.js.br",
+  frameworkUrl:       buildUrl + "/build.framework.js",
   codeUrl:            null,
   streamingAssetsUrl: SA_CDN,
   companyName:        "DefaultCompany",
@@ -155,14 +160,14 @@ function setBar(pct, label) {
 async function fetchWasmParts() {
   var parts = [];
   for (var i = 0; i < WASM_PARTS; i++) {
-    var label = 'WASM indiriliyor... ' + (i+1) + '/' + WASM_PARTS +
+    var label = 'wait... ' + (i+1) + '/' + WASM_PARTS +
                 ' (' + Math.round((i+1)/WASM_PARTS*60) + '%)';
     setBar((i / WASM_PARTS) * 55, label);
     var r = await fetch(buildUrl + '/build.wasm.br.part' + i);
     if (!r.ok) throw new Error('part' + i + ': HTTP ' + r.status);
     parts.push(new Uint8Array(await r.arrayBuffer()));
     setBar(((i+1) / WASM_PARTS) * 55,
-           'WASM indiriliyor... ' + (i+1) + '/' + WASM_PARTS +
+           'wait... ' + (i+1) + '/' + WASM_PARTS +
            ' (' + Math.round((i+1)/WASM_PARTS*55) + '%)');
     console.log('[WASM] part' + i + ': ' + parts[parts.length-1].length + ' bytes');
   }
@@ -184,12 +189,12 @@ async function preloadBundle() {
   var parts = [];
   for (var i = 0; i < BUNDLE_PARTS; i++) {
     var pct = 60 + (i / BUNDLE_PARTS) * 25;   /* 60% – 85% arası */
-    setBar(pct, 'Bundle indiriliyor... ' + (i+1) + '/' + BUNDLE_PARTS + ' (' + Math.round(pct) + '%)');
+    setBar(pct, 'wait... ' + (i+1) + '/' + BUNDLE_PARTS + ' (' + Math.round(pct) + '%)');
     var r = await fetch(SA_CDN + '/' + BUNDLE_FILE + '.part' + i);
     if (!r.ok) throw new Error('bundle part' + i + ' HTTP ' + r.status);
     parts.push(new Uint8Array(await r.arrayBuffer()));
     setBar(60 + ((i+1) / BUNDLE_PARTS) * 25,
-           'Bundle indiriliyor... ' + (i+1) + '/' + BUNDLE_PARTS + ' (' + Math.round(60+((i+1)/BUNDLE_PARTS)*25) + '%)');
+           'wait... ' + (i+1) + '/' + BUNDLE_PARTS + ' (' + Math.round(60+((i+1)/BUNDLE_PARTS)*25) + '%)');
     console.log('[Bundle] part' + i + ': ' + parts[parts.length-1].length + ' bytes');
   }
   var total = parts.reduce(function(s,p){return s+p.length;},0);
@@ -275,7 +280,7 @@ function ResumeCallback(){ isPausedGame=false; YG2Instance('SetPauseGame','false
 
 /* ── LOADER ───────────────────────────────────────────────── */
 var script = document.createElement("script");
-script.src = buildUrl + "/build.loader.js";
+script.src = buildUrl + "/buildd.loader.js";
 script.onload = async function() {
   /* Önce WASM part'ları indir */
   try {
@@ -285,16 +290,26 @@ script.onload = async function() {
   } catch(e) { alert("Download error: " + e.message); return; }
 
   StartUnityInstance = function() {
-    setBar(80, 'Oyun yükleniyor...');
+    /* Aynı Unity instance/loader'ın ikinci kez başlamasını engeller */
+    if (window.__UNITY_START_LOCK__) {
+      console.warn('[Unity] Start blocked: already starting/started');
+      return;
+    }
+    window.__UNITY_START_LOCK__ = true;
+
+    setBar(80, 'Lest go!...');
     createUnityInstance(canvas, config, function(progress){
       /* Unity 80%–100% aralığında */
       setBar(80 + progress * 20,
-             progress < 1 ? 'Oyun yükleniyor... ' + Math.round(80+progress*20) + '%' : '');
+             progress < 1 ? 'Lest go... ' + Math.round(80+progress*20) + '%' : '');
     }).then(function(inst){
       ygGameInstance = inst;
       loadingCover.style.background = "";
       loadingCover.style.display = "none";
-    }).catch(function(msg){ console.error(msg); });
+    }).catch(function(msg){
+      window.__UNITY_START_LOCK__ = false;
+      console.error(msg);
+    });
   };
 
   InstallBlurFocusBlocker();
@@ -302,15 +317,11 @@ script.onload = async function() {
   StartUnityInstance_IfUnloaded();
 };
 
-function StartUnityInstance_IfUnloaded(){
-  if(typeof StartUnityInstance==='function'&&spinner.style.display!=="none"||
-     typeof StartUnityInstance==='function'&&progressBarEmpty.style.display!=="none")
-    StartUnityInstance();
-}
 /* Daha güvenli kontrol */
 function StartUnityInstance_IfUnloaded(){
-  if(typeof StartUnityInstance==='function' && ygGameInstance===null)
+  if (typeof StartUnityInstance === 'function' && ygGameInstance === null && !window.__UNITY_START_LOCK__) {
     StartUnityInstance();
+  }
 }
 
 function IsLocalHost(){
@@ -495,7 +506,174 @@ function OpenAuthDialog(){
   }catch(e){LogStyledMessage('CRASH Open Auth Dialog: '+e.message);}
 }
 
-document.body.appendChild(script);
+if (!window.__UNITY_LOADER_SCRIPT_APPENDED__) {
+  window.__UNITY_LOADER_SCRIPT_APPENDED__ = true;
+  document.body.appendChild(script);
+} else {
+  console.warn('[Unity] Loader script append blocked: already appended');
+}
+</script>
+<!-- Sticky Bottom Center Ad (728x90) with Smooth Slide-Out and Reappearance -->
+<style>
+  /* Container: Bottom center, fixed, with overflow hidden */
+  #ad-container {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(728px, calc(100% - 20px)); /* 728px, 10px margin on mobile */
+    height: 90px;
+    background: rgba(0, 0, 0, 0.90);
+    display: none;
+    z-index: 99999;
+    border-radius: 0; /* Sharp corners */
+    overflow: hidden;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.45);
+    box-sizing: border-box;
+    transition: transform 0.5s ease-in-out; /* Smooth slide-in/out animation */
+  }
+
+  /* Slide-out animation */
+  #ad-container.hidden {
+    transform: translate(-50%, 100%); /* Slide down out of view */
+  }
+
+  #ad-iframe {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 745px; /* Updated width */
+    height: 90px; /* Updated height */
+    border: 0;
+    display: block;
+    overflow: hidden;
+    pointer-events: auto;
+    box-sizing: content-box;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  #ad-iframe::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* Close button with arrow */
+  #close-ad {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: #ff4d4d;
+    color: #fff;
+    border: none;
+    padding: 5px 9px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: not-allowed;
+    opacity: 0.72;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+  }
+  #close-ad.enabled {
+    cursor: pointer;
+    opacity: 1;
+  }
+  #close-ad::before {
+    content: '↓'; /* Down arrow for bottom ad */
+    margin-right: 4px;
+  }
+
+  /* Right mask for scrollbar */
+  #ad-right-mask {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.9));
+    z-index: 99999;
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 440px) {
+    #ad-container {
+      width: calc(100% - 12px);
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 0; /* Sharp corners on mobile */
+    }
+    #ad-iframe {
+      width: 728px;
+    }
+  }
+</style>
+
+<div id="ad-container" aria-hidden="true" role="dialog" aria-label="Advertisement">
+  <iframe
+    id="ad-iframe"
+    src="https://script.google.com/macros/s/AKfycbyLqfuYNg4HqY0inO1-UyYb5pVvsb0FDxHj6mw418ypqPmoNzUgt0McBC9Q9JfLfFp39Q/exec"
+    width="768px"
+    height="95px"
+    scrolling="no"
+    frameborder="0"
+    sandbox="allow-scripts allow-popups allow-same-origin"
+  ></iframe>
+  <button id="close-ad" disabled>Close (12)</button>
+  <div id="ad-right-mask"></div>
+</div>
+
+<script>
+  (function () {
+    const showDelay = 2000; // 2 seconds delay before first show
+    const countdownStart = 12; // 12 seconds countdown
+    const reappearDelay = 150000; // 25 seconds before reappearance
+    const adContainer = document.getElementById('ad-container');
+    const closeBtn = document.getElementById('close-ad');
+
+    function showAd() {
+      // Show ad with smooth slide-in
+      adContainer.style.display = 'block';
+      adContainer.classList.remove('hidden');
+      adContainer.setAttribute('aria-hidden', 'false');
+
+      // Start countdown
+      let timeLeft = countdownStart;
+      closeBtn.textContent = `Close (${timeLeft})`;
+      closeBtn.disabled = true;
+      closeBtn.classList.remove('enabled');
+
+      const t = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+          closeBtn.textContent = `Close (${timeLeft})`;
+        } else {
+          clearInterval(t);
+          closeBtn.disabled = false;
+          closeBtn.classList.add('enabled');
+          closeBtn.textContent = 'Close ↓';
+        }
+      }, 1000);
+    }
+
+    // Initial ad show
+    setTimeout(showAd, showDelay);
+
+    // Close with animation and schedule reappearance
+    closeBtn.addEventListener('click', () => {
+      if (closeBtn.disabled) return;
+      adContainer.classList.add('hidden');
+      adContainer.setAttribute('aria-hidden', 'true');
+      // Schedule reappearance without removing or reloading iframe
+      setTimeout(showAd, reappearDelay);
+    });
+  })();
 </script>
 </body>
 </html>
+
+]]></Content>
+</Module>
